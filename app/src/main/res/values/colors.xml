@@ -1,0 +1,27 @@
+<resources>
+    <color name="md_theme_light_primary">#0B6E4F</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#95F2CB</color>
+    <color name="md_theme_light_onPrimaryContainer">#002116</color>
+    <color name="md_theme_light_secondary">#4C6358</color>
+    <color name="md_theme_light_onSecondary">#FFFFFF</color>
+    <color name="md_theme_light_background">#F5FBF6</color>
+    <color name="md_theme_light_onBackground">#171D1A</color>
+    <color name="md_theme_light_surface">#F5FBF6</color>
+    <color name="md_theme_light_onSurface">#171D1A</color>
+
+    <color name="md_theme_dark_primary">#79D5B0</color>
+    <color name="md_theme_dark_onPrimary">#003828</color>
+    <color name="md_theme_dark_primaryContainer">#00513B</color>
+    <color name="md_theme_dark_onPrimaryContainer">#95F2CB</color>
+    <color name="md_theme_dark_secondary">#B3CCBE</color>
+    <color name="md_theme_dark_onSecondary">#1F352B</color>
+    <color name="md_theme_dark_background">#0F1512</color>
+    <color name="md_theme_dark_onBackground">#DEE4DE</color>
+    <color name="md_theme_dark_surface">#0F1512</color>
+    <color name="md_theme_dark_onSurface">#DEE4DE</color>
+
+    <color name="color_income">#2E7D32</color>
+    <color name="color_expense">#C62828</color>
+    <color name="color_pending">#EF6C00</color>
+</resources>

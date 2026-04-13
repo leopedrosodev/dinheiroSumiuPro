@@ -1,0 +1,25 @@
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+
+# Codex local artifacts
+.codex
+
+# Gradle / Android build
+.gradle/
+build/
+**/build/
+.cxx/
+.externalNativeBuild/
+captures/
+
+# Local machine config
+local.properties
+/local.properties
+
+# Logs / temp
+*.log
+*.tmp
