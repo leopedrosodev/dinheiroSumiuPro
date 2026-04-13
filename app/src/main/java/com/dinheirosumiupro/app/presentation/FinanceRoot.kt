@@ -57,7 +57,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -87,6 +90,7 @@ import com.dinheirosumiupro.app.ui.theme.DinheiroSumiuProTheme
 import com.dinheirosumiupro.app.ui.theme.ExpenseRed
 import com.dinheirosumiupro.app.ui.theme.IncomeGreen
 import com.dinheirosumiupro.app.ui.theme.PendingOrange
+import kotlinx.coroutines.delay
 import java.time.YearMonth
 
 private data class TabItem(
@@ -102,6 +106,33 @@ private val tabItems = listOf(
     TabItem(FinanceTab.PENDENCIAS, R.string.aba_pendencias, Icons.Filled.MoneyOff, Icons.Outlined.MoneyOff),
     TabItem(FinanceTab.RELATORIO, R.string.aba_relatorio, Icons.Filled.Assessment, Icons.Outlined.TaskAlt)
 )
+
+@Composable
+private fun IntroSplashScreen(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Text(
+                text = stringResource(id = R.string.splash_prompt),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
+            )
+            Image(
+                painter = painterResource(id = R.drawable.logo_app),
+                contentDescription = stringResource(id = R.string.app_name),
+                modifier = Modifier.size(160.dp)
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -173,151 +204,162 @@ fun FinanceRoot(appContainer: AppContainer) {
     }
 
     DinheiroSumiuProTheme {
-        Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbars) },
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.logo_app),
-                                contentDescription = stringResource(id = R.string.app_name),
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Text(text = stringResource(id = R.string.app_name))
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-            },
-            bottomBar = {
-                NavigationBar {
-                    tabItems.forEach { item ->
-                        val selected = state.selectedTab == item.tab
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = { financeViewModel.onEvent(FinanceUiEvent.SelectTab(item.tab)) },
-                            icon = {
-                                Icon(
-                                    imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                    contentDescription = stringResource(id = item.titleRes)
-                                )
-                            },
-                            label = { Text(text = stringResource(id = item.titleRes)) }
-                        )
-                    }
-                }
-            },
-            floatingActionButton = {
-                if (state.selectedTab == FinanceTab.GASTOS || state.selectedTab == FinanceTab.PENDENCIAS) {
-                    FloatingActionButton(onClick = { financeViewModel.onEvent(FinanceUiEvent.OpenAddDialog) }) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = stringResource(id = R.string.acao_adicionar)
-                        )
-                    }
-                }
-            }
-        ) { innerPadding ->
-            when (state.selectedTab) {
-                FinanceTab.BALANCO -> BalanceScreen(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    currentMonthBalance = state.currentMonthBalance,
-                    previousMonthBalance = state.previousMonthBalance,
-                    totalSpentCents = state.currentMonthTotalSpentCents,
-                    salaryCents = state.currentMonthSalaryCents,
-                    nonEssentialExpenseCents = state.currentMonthNonEssentialExpenseCents,
-                    investmentCents = state.currentMonthInvestmentCents
-                )
+        var showSplash by rememberSaveable { mutableStateOf(true) }
 
-                FinanceTab.GASTOS -> ExpensesScreen(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    entries = state.entriesForSelectedMonth,
-                    selectedMonth = state.selectedEntriesMonth,
-                    availableMonths = state.availableMonths,
-                    onSelectMonth = { month ->
-                        financeViewModel.onEvent(FinanceUiEvent.SelectEntriesMonth(month))
-                    },
-                    onDeleteEntry = { id ->
-                        financeViewModel.onEvent(FinanceUiEvent.DeleteEntry(id))
-                    },
-                    onToggleStatus = { entryId, status ->
-                        financeViewModel.onEvent(FinanceUiEvent.UpdateEntryStatus(entryId, status))
-                    },
-                    onEditEntry = { entry ->
-                        financeViewModel.onEvent(FinanceUiEvent.OpenEditDialog(entry))
-                    }
-                )
-
-                FinanceTab.PENDENCIAS -> PendingScreen(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    pendingEntries = state.pendingEntries,
-                    onDeleteEntry = { id ->
-                        financeViewModel.onEvent(FinanceUiEvent.DeleteEntry(id))
-                    },
-                    onMarkAsPaid = { id ->
-                        financeViewModel.onEvent(
-                            FinanceUiEvent.UpdateEntryStatus(entryId = id, status = EntryStatus.PAID)
-                        )
-                    },
-                    onEditEntry = { entry ->
-                        financeViewModel.onEvent(FinanceUiEvent.OpenEditDialog(entry))
-                    }
-                )
-
-                FinanceTab.RELATORIO -> ReportScreen(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    report = state.monthlyReport,
-                    selectedMonth = state.selectedReportMonth,
-                    availableMonths = state.availableMonths,
-                    onSelectMonth = { month ->
-                        financeViewModel.onEvent(FinanceUiEvent.SelectReportMonth(month))
-                    },
-                    onExportCsv = {
-                        exportCsvLauncher.launch("relatorio-${state.selectedReportMonth}.csv")
-                    },
-                    onExportPdf = {
-                        exportPdfLauncher.launch("relatorio-${state.selectedReportMonth}.pdf")
-                    }
-                )
-            }
+        LaunchedEffect(Unit) {
+            delay(1800)
+            showSplash = false
         }
 
-        if (state.showEntryDialog) {
-            EntryDialog(
-                form = state.form,
-                isEditing = state.isEditingEntry,
-                availableMonths = state.availableMonths,
-                onDismiss = { financeViewModel.onEvent(FinanceUiEvent.CloseEntryDialog) },
-                onSave = { financeViewModel.onEvent(FinanceUiEvent.SaveEntry) },
-                onDescriptionChange = { value ->
-                    financeViewModel.onEvent(FinanceUiEvent.ChangeDescription(value))
+        if (showSplash) {
+            IntroSplashScreen()
+        } else {
+            Scaffold(
+                snackbarHost = { SnackbarHost(hostState = snackbars) },
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.logo_app),
+                                    contentDescription = stringResource(id = R.string.app_name),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Text(text = stringResource(id = R.string.app_name))
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
                 },
-                onCategoryChange = { value ->
-                    financeViewModel.onEvent(FinanceUiEvent.ChangeCategory(value))
+                bottomBar = {
+                    NavigationBar {
+                        tabItems.forEach { item ->
+                            val selected = state.selectedTab == item.tab
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = { financeViewModel.onEvent(FinanceUiEvent.SelectTab(item.tab)) },
+                                icon = {
+                                    Icon(
+                                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                        contentDescription = stringResource(id = item.titleRes)
+                                    )
+                                },
+                                label = { Text(text = stringResource(id = item.titleRes)) }
+                            )
+                        }
+                    }
                 },
-                onAmountChange = { value ->
-                    financeViewModel.onEvent(FinanceUiEvent.ChangeAmount(value))
-                },
-                onTypeChange = { value ->
-                    financeViewModel.onEvent(FinanceUiEvent.ChangeType(value))
-                },
-                onStatusChange = { value ->
-                    financeViewModel.onEvent(FinanceUiEvent.ChangeStatus(value))
-                },
-                onReferenceMonthChange = { value ->
-                    financeViewModel.onEvent(FinanceUiEvent.ChangeReferenceMonth(value))
-                },
-                onCounterpartyChange = { value ->
-                    financeViewModel.onEvent(FinanceUiEvent.ChangeCounterparty(value))
+                floatingActionButton = {
+                    if (state.selectedTab == FinanceTab.GASTOS || state.selectedTab == FinanceTab.PENDENCIAS) {
+                        FloatingActionButton(onClick = { financeViewModel.onEvent(FinanceUiEvent.OpenAddDialog) }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = stringResource(id = R.string.acao_adicionar)
+                            )
+                        }
+                    }
                 }
-            )
+            ) { innerPadding ->
+                when (state.selectedTab) {
+                    FinanceTab.BALANCO -> BalanceScreen(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        currentMonthBalance = state.currentMonthBalance,
+                        previousMonthBalance = state.previousMonthBalance,
+                        totalSpentCents = state.currentMonthTotalSpentCents,
+                        salaryCents = state.currentMonthSalaryCents,
+                        nonEssentialExpenseCents = state.currentMonthNonEssentialExpenseCents,
+                        investmentCents = state.currentMonthInvestmentCents
+                    )
+
+                    FinanceTab.GASTOS -> ExpensesScreen(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        entries = state.entriesForSelectedMonth,
+                        selectedMonth = state.selectedEntriesMonth,
+                        availableMonths = state.availableMonths,
+                        onSelectMonth = { month ->
+                            financeViewModel.onEvent(FinanceUiEvent.SelectEntriesMonth(month))
+                        },
+                        onDeleteEntry = { id ->
+                            financeViewModel.onEvent(FinanceUiEvent.DeleteEntry(id))
+                        },
+                        onToggleStatus = { entryId, status ->
+                            financeViewModel.onEvent(FinanceUiEvent.UpdateEntryStatus(entryId, status))
+                        },
+                        onEditEntry = { entry ->
+                            financeViewModel.onEvent(FinanceUiEvent.OpenEditDialog(entry))
+                        }
+                    )
+
+                    FinanceTab.PENDENCIAS -> PendingScreen(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        pendingEntries = state.pendingEntries,
+                        onDeleteEntry = { id ->
+                            financeViewModel.onEvent(FinanceUiEvent.DeleteEntry(id))
+                        },
+                        onMarkAsPaid = { id ->
+                            financeViewModel.onEvent(
+                                FinanceUiEvent.UpdateEntryStatus(entryId = id, status = EntryStatus.PAID)
+                            )
+                        },
+                        onEditEntry = { entry ->
+                            financeViewModel.onEvent(FinanceUiEvent.OpenEditDialog(entry))
+                        }
+                    )
+
+                    FinanceTab.RELATORIO -> ReportScreen(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        report = state.monthlyReport,
+                        selectedMonth = state.selectedReportMonth,
+                        availableMonths = state.availableMonths,
+                        onSelectMonth = { month ->
+                            financeViewModel.onEvent(FinanceUiEvent.SelectReportMonth(month))
+                        },
+                        onExportCsv = {
+                            exportCsvLauncher.launch("relatorio-${state.selectedReportMonth}.csv")
+                        },
+                        onExportPdf = {
+                            exportPdfLauncher.launch("relatorio-${state.selectedReportMonth}.pdf")
+                        }
+                    )
+                }
+            }
+
+            if (state.showEntryDialog) {
+                EntryDialog(
+                    form = state.form,
+                    isEditing = state.isEditingEntry,
+                    availableMonths = state.availableMonths,
+                    onDismiss = { financeViewModel.onEvent(FinanceUiEvent.CloseEntryDialog) },
+                    onSave = { financeViewModel.onEvent(FinanceUiEvent.SaveEntry) },
+                    onDescriptionChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeDescription(value))
+                    },
+                    onCategoryChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeCategory(value))
+                    },
+                    onAmountChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeAmount(value))
+                    },
+                    onTypeChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeType(value))
+                    },
+                    onStatusChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeStatus(value))
+                    },
+                    onReferenceMonthChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeReferenceMonth(value))
+                    },
+                    onCounterpartyChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeCounterparty(value))
+                    }
+                )
+            }
         }
     }
 }

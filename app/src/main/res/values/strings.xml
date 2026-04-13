@@ -41,6 +41,7 @@
     <string name="descritivo_salario">Salário</string>
     <string name="descritivo_despesa_nao_essencial">Despesa não essencial</string>
     <string name="descritivo_investimento">Investimento</string>
+    <string name="splash_prompt">Já vai gastar de novo ?</string>
     <string name="feedback_export_csv_ok">CSV exportado com sucesso</string>
     <string name="feedback_export_pdf_ok">PDF exportado com sucesso</string>
     <string name="feedback_export_erro">Falha ao exportar: %1$s</string>
