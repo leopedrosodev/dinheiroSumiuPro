@@ -123,6 +123,7 @@ private fun IntroSplashScreen(modifier: Modifier = Modifier) {
                 text = stringResource(id = R.string.splash_prompt),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
+                color = Color.White,
                 textAlign = TextAlign.Center
             )
             Image(
