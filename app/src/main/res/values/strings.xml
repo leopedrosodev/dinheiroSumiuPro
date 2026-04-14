@@ -5,10 +5,15 @@
     <string name="aba_pendencias">Pendências</string>
     <string name="aba_relatorio">Relatório</string>
     <string name="acao_adicionar">Adicionar</string>
+    <string name="acao_adicionar_base">Adicionar item na base</string>
     <string name="acao_salvar">Salvar</string>
     <string name="acao_cancelar">Cancelar</string>
     <string name="acao_excluir">Excluir</string>
     <string name="acao_editar">Editar</string>
+    <string name="acao_gerar_mes">Gerar mês pela base</string>
+    <string name="acao_preencher_valores_base">Preencher valores iniciais</string>
+    <string name="acao_pausar_base">Pausar na base</string>
+    <string name="acao_reativar_base">Reativar na base</string>
     <string name="acao_exportar_csv">Exportar CSV</string>
     <string name="acao_exportar_pdf">Exportar PDF</string>
     <string name="acao_marcar_pago">Marcar como pago</string>
@@ -20,6 +25,7 @@
     <string name="label_tipo">Tipo</string>
     <string name="label_status">Status</string>
     <string name="label_referencia">Referência</string>
+    <string name="label_base_ativa">Ativo na base</string>
     <string name="tipo_gasto">Gasto</string>
     <string name="tipo_receita">Receita</string>
     <string name="status_pago">Pago</string>
@@ -28,6 +34,13 @@
     <string name="mes_passado">Mês passado</string>
     <string name="titulo_adicionar_lancamento">Novo lançamento</string>
     <string name="titulo_editar_lancamento">Editar lançamento</string>
+    <string name="titulo_adicionar_base">Novo item recorrente</string>
+    <string name="titulo_editar_base">Editar item recorrente</string>
+    <string name="titulo_base_recorrente">Base recorrente</string>
+    <string name="subtitulo_base_recorrente">Esses itens podem ser gerados para qualquer mês e continuam editáveis.</string>
+    <string name="subtitulo_valores_base">Os valores iniciais usam sua planilha como referência e você pode ajustar depois.</string>
+    <string name="base_sem_valor">Sem valor definido</string>
+    <string name="base_vazia">Sua base recorrente ainda está vazia.</string>
     <string name="sem_dados">Sem dados por enquanto.</string>
     <string name="resumo_receitas">Receitas</string>
     <string name="resumo_gastos">Gastos</string>

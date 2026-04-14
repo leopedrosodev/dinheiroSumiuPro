@@ -4,6 +4,11 @@
 Evoluir o app de controle financeiro pessoal para uma versão pronta para distribuição, com foco em confiabilidade, organização dos dados e potencial de monetização.
 
 ## Fase 1 - Base de Produto (curto prazo)
+0. Implementado recentemente
+- Base recorrente local editável.
+- Geração do mês a partir da base sem duplicação.
+- Preenchimento inicial de valores sugeridos para a base recorrente.
+
 1. Refinar UX de lançamentos
 - Máscara monetária melhor no campo de valor.
 - Validação de formulário com mensagens mais específicas.
@@ -20,6 +25,12 @@ Evoluir o app de controle financeiro pessoal para uma versão pronta para distri
 - Ícone, nome e tema revisados para publicação.
 
 ## Fase 2 - Offline First + Sync (médio prazo)
+Ordem sugerida para adoção de Firebase:
+- Firebase Crashlytics primeiro, para observar falhas antes de abrir sync.
+- Firebase Auth opcional depois, mantendo uso local sem login.
+- Firestore Sync na sequência, com Room local como fonte principal.
+- Backup e restauração por último, depois que autenticação e sync estiverem estáveis.
+
 1. Conta de usuário opcional
 - Login com Google (Firebase Auth).
 - Conta local continua funcionando sem login.

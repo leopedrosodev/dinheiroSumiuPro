@@ -13,8 +13,10 @@ Plano de evolução: [docs/PLANO_MELHORIAS.md](docs/PLANO_MELHORIAS.md)
   - Despesa não essencial
   - Investimento
 - Aba de gastos com criação, edição, remoção e mudança de status.
+- Base recorrente local com edição, ativação/inativação, remoção e geração automática para o mês.
 - Aba de pendências dedicada (pendências não ficam mais destacadas no balanço/relatório).
 - Filtro por múltiplos meses (todos os meses com movimentação).
+- Ação para preencher valores iniciais da base recorrente a partir da planilha de referência.
 - Relatório mensal com:
   - receitas
   - gastos
@@ -40,6 +42,32 @@ Os cálculos de descritivo usam categorias fixas (não dependem de palavra-chave
   - Despesa não essencial
   - Investimento
   - Outros
+
+## Base Recorrente
+
+- A base recorrente é local e editável.
+- Itens da base podem ser adicionados, removidos, pausados e reativados a qualquer momento.
+- Gerar o mês usa apenas os itens ativos da base.
+- A geração evita duplicar um item que já exista no mesmo mês com a mesma descrição, categoria e tipo.
+- Alterar a base não muda meses anteriores.
+- Existe um atalho para preencher valores iniciais sugeridos com base na planilha usada como referência.
+
+Valores sugeridos aplicados automaticamente quando o item estiver sem valor:
+
+- Aluguel: `R$ 700,00`
+- Internet: `R$ 100,00`
+- Agua: `R$ 180,00`
+- Luz: `R$ 280,00`
+- Celular: `R$ 60,00`
+- Unitv: `R$ 24,00`
+- Gasolina carro: `R$ 160,00`
+- Oleo da moto: `R$ 64,00`
+- Faculdade: `R$ 100,00`
+- ChatGPT: `R$ 37,00`
+- Motoclube: `R$ 75,00`
+
+Observação:
+- `Gasolina moto` permanece sem valor inicial sugerido e pode ser preenchido manualmente no app.
 
 ## Stack
 

@@ -23,3 +23,25 @@ data class LedgerEntryEntity(
     val counterparty: String?,
     val createdAtMillis: Long
 )
+
+@Entity(
+    tableName = "recurring_entry_templates",
+    indices = [
+        Index(value = ["isActive"]),
+        Index(value = ["displayOrder"])
+    ]
+)
+data class RecurringEntryTemplateEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val description: String,
+    val category: String,
+    val amountCents: Long?,
+    val type: String,
+    val status: String,
+    val counterparty: String?,
+    val isActive: Boolean,
+    val displayOrder: Int,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)

@@ -50,6 +50,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -81,6 +82,7 @@ import com.dinheirosumiupro.app.domain.model.EntryType
 import com.dinheirosumiupro.app.domain.model.LedgerEntry
 import com.dinheirosumiupro.app.domain.model.MonthBalance
 import com.dinheirosumiupro.app.domain.model.MonthlyReport
+import com.dinheirosumiupro.app.domain.model.RecurringEntryTemplate
 import com.dinheirosumiupro.app.presentation.common.FinanceCategories
 import com.dinheirosumiupro.app.presentation.common.ReportExporter
 import com.dinheirosumiupro.app.presentation.common.formatCurrencyFromCents
@@ -281,10 +283,31 @@ fun FinanceRoot(appContainer: AppContainer) {
                     FinanceTab.GASTOS -> ExpensesScreen(
                         modifier = Modifier.fillMaxSize().padding(innerPadding),
                         entries = state.entriesForSelectedMonth,
+                        recurringTemplates = state.recurringTemplates,
                         selectedMonth = state.selectedEntriesMonth,
                         availableMonths = state.availableMonths,
                         onSelectMonth = { month ->
                             financeViewModel.onEvent(FinanceUiEvent.SelectEntriesMonth(month))
+                        },
+                        onGenerateMonth = { month ->
+                            financeViewModel.onEvent(FinanceUiEvent.GenerateEntriesForMonth(month))
+                        },
+                        onApplySuggestedRecurringTemplateAmounts = {
+                            financeViewModel.onEvent(FinanceUiEvent.ApplySuggestedRecurringTemplateAmounts)
+                        },
+                        onAddRecurringTemplate = {
+                            financeViewModel.onEvent(FinanceUiEvent.OpenAddRecurringTemplateDialog)
+                        },
+                        onEditRecurringTemplate = { template ->
+                            financeViewModel.onEvent(FinanceUiEvent.OpenEditRecurringTemplateDialog(template))
+                        },
+                        onToggleRecurringTemplateActive = { templateId, isActive ->
+                            financeViewModel.onEvent(
+                                FinanceUiEvent.UpdateRecurringTemplateActive(templateId, isActive)
+                            )
+                        },
+                        onDeleteRecurringTemplate = { templateId ->
+                            financeViewModel.onEvent(FinanceUiEvent.DeleteRecurringTemplate(templateId))
                         },
                         onDeleteEntry = { id ->
                             financeViewModel.onEvent(FinanceUiEvent.DeleteEntry(id))
@@ -358,6 +381,36 @@ fun FinanceRoot(appContainer: AppContainer) {
                     },
                     onCounterpartyChange = { value ->
                         financeViewModel.onEvent(FinanceUiEvent.ChangeCounterparty(value))
+                    }
+                )
+            }
+
+            if (state.showRecurringTemplateDialog) {
+                RecurringTemplateDialog(
+                    form = state.recurringTemplateForm,
+                    isEditing = state.isEditingRecurringTemplate,
+                    onDismiss = { financeViewModel.onEvent(FinanceUiEvent.CloseRecurringTemplateDialog) },
+                    onSave = { financeViewModel.onEvent(FinanceUiEvent.SaveRecurringTemplate) },
+                    onDescriptionChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeRecurringTemplateDescription(value))
+                    },
+                    onCategoryChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeRecurringTemplateCategory(value))
+                    },
+                    onAmountChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeRecurringTemplateAmount(value))
+                    },
+                    onTypeChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeRecurringTemplateType(value))
+                    },
+                    onStatusChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeRecurringTemplateStatus(value))
+                    },
+                    onCounterpartyChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeRecurringTemplateCounterparty(value))
+                    },
+                    onActiveChange = { value ->
+                        financeViewModel.onEvent(FinanceUiEvent.ChangeRecurringTemplateActive(value))
                     }
                 )
             }
@@ -524,9 +577,16 @@ private fun SummaryRow(
 private fun ExpensesScreen(
     modifier: Modifier,
     entries: List<LedgerEntry>,
+    recurringTemplates: List<RecurringEntryTemplate>,
     selectedMonth: YearMonth,
     availableMonths: List<YearMonth>,
     onSelectMonth: (YearMonth) -> Unit,
+    onGenerateMonth: (YearMonth) -> Unit,
+    onApplySuggestedRecurringTemplateAmounts: () -> Unit,
+    onAddRecurringTemplate: () -> Unit,
+    onEditRecurringTemplate: (RecurringEntryTemplate) -> Unit,
+    onToggleRecurringTemplateActive: (Long, Boolean) -> Unit,
+    onDeleteRecurringTemplate: (Long) -> Unit,
     onDeleteEntry: (Long) -> Unit,
     onToggleStatus: (Long, EntryStatus) -> Unit,
     onEditEntry: (LedgerEntry) -> Unit
@@ -538,6 +598,20 @@ private fun ExpensesScreen(
             onSelectMonth = onSelectMonth,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
         )
+
+        RecurringTemplatesCard(
+            templates = recurringTemplates,
+            selectedMonth = selectedMonth,
+            onGenerateMonth = onGenerateMonth,
+            onApplySuggestedRecurringTemplateAmounts = onApplySuggestedRecurringTemplateAmounts,
+            onAddRecurringTemplate = onAddRecurringTemplate,
+            onEditRecurringTemplate = onEditRecurringTemplate,
+            onToggleRecurringTemplateActive = onToggleRecurringTemplateActive,
+            onDeleteRecurringTemplate = onDeleteRecurringTemplate,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(modifier = Modifier.size(12.dp))
 
         if (entries.isEmpty()) {
             EmptyState(modifier = Modifier.fillMaxSize())
@@ -558,6 +632,146 @@ private fun ExpensesScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun RecurringTemplatesCard(
+    templates: List<RecurringEntryTemplate>,
+    selectedMonth: YearMonth,
+    onGenerateMonth: (YearMonth) -> Unit,
+    onApplySuggestedRecurringTemplateAmounts: () -> Unit,
+    onAddRecurringTemplate: () -> Unit,
+    onEditRecurringTemplate: (RecurringEntryTemplate) -> Unit,
+    onToggleRecurringTemplateActive: (Long, Boolean) -> Unit,
+    onDeleteRecurringTemplate: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = stringResource(id = R.string.titulo_base_recorrente),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = stringResource(id = R.string.subtitulo_base_recorrente),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { onGenerateMonth(selectedMonth) }) {
+                    Text(text = stringResource(id = R.string.acao_gerar_mes))
+                }
+                TextButton(onClick = onAddRecurringTemplate) {
+                    Text(text = stringResource(id = R.string.acao_adicionar_base))
+                }
+            }
+
+            TextButton(onClick = onApplySuggestedRecurringTemplateAmounts) {
+                Text(text = stringResource(id = R.string.acao_preencher_valores_base))
+            }
+            Text(
+                text = stringResource(id = R.string.subtitulo_valores_base),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (templates.isEmpty()) {
+                Text(text = stringResource(id = R.string.base_vazia))
+                return@Column
+            }
+
+            templates.forEach { template ->
+                RecurringTemplateRow(
+                    template = template,
+                    onEdit = { onEditRecurringTemplate(template) },
+                    onToggleActive = { onToggleRecurringTemplateActive(template.id, !template.isActive) },
+                    onDelete = { onDeleteRecurringTemplate(template.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecurringTemplateRow(
+    template: RecurringEntryTemplate,
+    onEdit: () -> Unit,
+    onToggleActive: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = template.description,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = buildString {
+                        append(FinanceCategories.toDisplayLabel(template.category))
+                        append(" • ")
+                        append(
+                            if (template.amountCents != null) {
+                                formatCurrencyFromCents(template.amountCents)
+                            } else {
+                                stringResource(id = R.string.base_sem_valor)
+                            }
+                        )
+                        if (!template.counterparty.isNullOrBlank()) {
+                            append(" • ")
+                            append(template.counterparty)
+                        }
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            AssistChip(
+                onClick = onToggleActive,
+                label = {
+                    Text(
+                        text = if (template.isActive) {
+                            stringResource(id = R.string.acao_pausar_base)
+                        } else {
+                            stringResource(id = R.string.acao_reativar_base)
+                        }
+                    )
+                }
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onEdit) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = stringResource(id = R.string.acao_editar)
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = stringResource(id = R.string.acao_excluir)
+                )
+            }
+        }
+
+        HorizontalDivider()
     }
 }
 
@@ -968,6 +1182,122 @@ private fun EntryDialog(
                     selectedMonth = form.referenceMonth,
                     onSelectMonth = onReferenceMonthChange
                 )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onSave) {
+                Text(text = stringResource(id = R.string.acao_salvar))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(id = R.string.acao_cancelar))
+            }
+        }
+    )
+}
+
+@Composable
+private fun RecurringTemplateDialog(
+    form: RecurringTemplateFormState,
+    isEditing: Boolean,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    onCategoryChange: (String) -> Unit,
+    onAmountChange: (String) -> Unit,
+    onTypeChange: (EntryType) -> Unit,
+    onStatusChange: (EntryStatus) -> Unit,
+    onCounterpartyChange: (String) -> Unit,
+    onActiveChange: (Boolean) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (isEditing) {
+                    stringResource(id = R.string.titulo_editar_base)
+                } else {
+                    stringResource(id = R.string.titulo_adicionar_base)
+                }
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = form.description,
+                    onValueChange = onDescriptionChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text(text = stringResource(id = R.string.label_descricao)) }
+                )
+
+                OutlinedTextField(
+                    value = form.amountInput,
+                    onValueChange = onAmountChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text(text = stringResource(id = R.string.label_valor)) },
+                    placeholder = { Text(text = "700,00") }
+                )
+
+                OutlinedTextField(
+                    value = form.counterparty,
+                    onValueChange = onCounterpartyChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text(text = stringResource(id = R.string.label_responsavel)) }
+                )
+
+                Text(text = stringResource(id = R.string.label_tipo), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = form.type == EntryType.EXPENSE,
+                        onClick = { onTypeChange(EntryType.EXPENSE) },
+                        label = { Text(text = stringResource(id = R.string.tipo_gasto)) }
+                    )
+                    FilterChip(
+                        selected = form.type == EntryType.INCOME,
+                        onClick = { onTypeChange(EntryType.INCOME) },
+                        label = { Text(text = stringResource(id = R.string.tipo_receita)) }
+                    )
+                }
+
+                Text(text = stringResource(id = R.string.label_categoria), style = MaterialTheme.typography.labelLarge)
+                CategorySelector(
+                    selectedCategory = form.category,
+                    categories = FinanceCategories.optionsForType(form.type),
+                    onSelectCategory = onCategoryChange
+                )
+
+                Text(text = stringResource(id = R.string.label_status), style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = form.status == EntryStatus.PAID,
+                        onClick = { onStatusChange(EntryStatus.PAID) },
+                        label = { Text(text = stringResource(id = R.string.status_pago)) }
+                    )
+                    FilterChip(
+                        selected = form.status == EntryStatus.PENDING,
+                        onClick = { onStatusChange(EntryStatus.PENDING) },
+                        label = { Text(text = stringResource(id = R.string.status_pendente)) }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.label_base_ativa),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Switch(checked = form.isActive, onCheckedChange = onActiveChange)
+                }
             }
         },
         confirmButton = {

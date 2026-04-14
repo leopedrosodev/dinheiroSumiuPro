@@ -34,6 +34,31 @@ data class NewLedgerEntry(
     val counterparty: String?
 )
 
+data class RecurringEntryTemplate(
+    val id: Long,
+    val description: String,
+    val category: String,
+    val amountCents: Long?,
+    val type: EntryType,
+    val status: EntryStatus,
+    val counterparty: String?,
+    val isActive: Boolean,
+    val displayOrder: Int,
+    val createdAtMillis: Long,
+    val updatedAtMillis: Long
+)
+
+data class NewRecurringEntryTemplate(
+    val description: String,
+    val category: String,
+    val amountCents: Long?,
+    val type: EntryType,
+    val status: EntryStatus,
+    val counterparty: String?,
+    val isActive: Boolean,
+    val displayOrder: Int
+)
+
 data class MonthBalance(
     val month: YearMonth,
     val totalIncomeCents: Long,

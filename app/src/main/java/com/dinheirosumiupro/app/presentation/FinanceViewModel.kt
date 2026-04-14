@@ -7,6 +7,8 @@ import com.dinheirosumiupro.app.domain.model.EntryStatus
 import com.dinheirosumiupro.app.domain.model.EntryType
 import com.dinheirosumiupro.app.domain.model.LedgerEntry
 import com.dinheirosumiupro.app.domain.model.NewLedgerEntry
+import com.dinheirosumiupro.app.domain.model.NewRecurringEntryTemplate
+import com.dinheirosumiupro.app.domain.model.RecurringEntryTemplate
 import com.dinheirosumiupro.app.domain.usecase.BuildMonthlyReportUseCase
 import com.dinheirosumiupro.app.domain.usecase.CalculateMonthBalanceUseCase
 import com.dinheirosumiupro.app.presentation.common.FinanceCategories
@@ -28,6 +30,9 @@ private data class FinanceLocalState(
     val showEntryDialog: Boolean = false,
     val editingEntryId: Long? = null,
     val form: EntryFormState = EntryFormState(),
+    val showRecurringTemplateDialog: Boolean = false,
+    val editingRecurringTemplateId: Long? = null,
+    val recurringTemplateForm: RecurringTemplateFormState = RecurringTemplateFormState(),
     val feedbackMessage: String? = null
 )
 
@@ -38,12 +43,15 @@ class FinanceViewModel(
 ) : ViewModel() {
     private val localState = MutableStateFlow(FinanceLocalState())
     private var latestEntries: List<LedgerEntry> = emptyList()
+    private var latestRecurringTemplates: List<RecurringEntryTemplate> = emptyList()
 
     val uiState: StateFlow<FinanceUiState> = combine(
         repository.observeEntries(),
+        repository.observeRecurringTemplates(),
         localState
-    ) { entries, local ->
+    ) { entries, recurringTemplates, local ->
         latestEntries = entries
+        latestRecurringTemplates = recurringTemplates
 
         val currentMonth = YearMonth.now()
         val previousMonth = currentMonth.minusMonths(1)
@@ -108,6 +116,10 @@ class FinanceViewModel(
             showEntryDialog = local.showEntryDialog,
             isEditingEntry = local.editingEntryId != null,
             form = local.form,
+            recurringTemplates = recurringTemplates,
+            showRecurringTemplateDialog = local.showRecurringTemplateDialog,
+            isEditingRecurringTemplate = local.editingRecurringTemplateId != null,
+            recurringTemplateForm = local.recurringTemplateForm,
             currentMonthBalance = calculateMonthBalanceUseCase(entries, currentMonth),
             previousMonthBalance = calculateMonthBalanceUseCase(entries, previousMonth),
             currentMonthTotalSpentCents = currentMonthExpenses.sumOf { it.amountCents },
@@ -179,6 +191,44 @@ class FinanceViewModel(
                 }
             }
 
+            FinanceUiEvent.OpenAddRecurringTemplateDialog -> {
+                localState.update {
+                    it.copy(
+                        showRecurringTemplateDialog = true,
+                        editingRecurringTemplateId = null,
+                        recurringTemplateForm = RecurringTemplateFormState()
+                    )
+                }
+            }
+
+            is FinanceUiEvent.OpenEditRecurringTemplateDialog -> {
+                localState.update {
+                    it.copy(
+                        showRecurringTemplateDialog = true,
+                        editingRecurringTemplateId = event.template.id,
+                        recurringTemplateForm = RecurringTemplateFormState(
+                            description = event.template.description,
+                            category = event.template.category,
+                            amountInput = event.template.amountCents?.let(::formatCentsToInput).orEmpty(),
+                            type = event.template.type,
+                            status = event.template.status,
+                            counterparty = event.template.counterparty.orEmpty(),
+                            isActive = event.template.isActive
+                        )
+                    )
+                }
+            }
+
+            FinanceUiEvent.CloseRecurringTemplateDialog -> {
+                localState.update {
+                    it.copy(
+                        showRecurringTemplateDialog = false,
+                        editingRecurringTemplateId = null,
+                        recurringTemplateForm = RecurringTemplateFormState()
+                    )
+                }
+            }
+
             is FinanceUiEvent.ChangeDescription -> {
                 localState.update { it.copy(form = it.form.copy(description = event.value)) }
             }
@@ -218,9 +268,79 @@ class FinanceViewModel(
                 localState.update { it.copy(form = it.form.copy(counterparty = event.value)) }
             }
 
+            is FinanceUiEvent.ChangeRecurringTemplateDescription -> {
+                localState.update {
+                    it.copy(
+                        recurringTemplateForm = it.recurringTemplateForm.copy(description = event.value)
+                    )
+                }
+            }
+
+            is FinanceUiEvent.ChangeRecurringTemplateCategory -> {
+                localState.update {
+                    it.copy(
+                        recurringTemplateForm = it.recurringTemplateForm.copy(category = event.value)
+                    )
+                }
+            }
+
+            is FinanceUiEvent.ChangeRecurringTemplateAmount -> {
+                localState.update {
+                    it.copy(
+                        recurringTemplateForm = it.recurringTemplateForm.copy(amountInput = event.value)
+                    )
+                }
+            }
+
+            is FinanceUiEvent.ChangeRecurringTemplateType -> {
+                localState.update { state ->
+                    val allowedCategories = FinanceCategories.optionsForType(event.value)
+                    val adjustedCategory = state.recurringTemplateForm.category
+                        .takeIf { it in allowedCategories }
+                        ?: allowedCategories.first()
+                    state.copy(
+                        recurringTemplateForm = state.recurringTemplateForm.copy(
+                            type = event.value,
+                            category = adjustedCategory
+                        )
+                    )
+                }
+            }
+
+            is FinanceUiEvent.ChangeRecurringTemplateStatus -> {
+                localState.update {
+                    it.copy(
+                        recurringTemplateForm = it.recurringTemplateForm.copy(status = event.value)
+                    )
+                }
+            }
+
+            is FinanceUiEvent.ChangeRecurringTemplateCounterparty -> {
+                localState.update {
+                    it.copy(
+                        recurringTemplateForm = it.recurringTemplateForm.copy(counterparty = event.value)
+                    )
+                }
+            }
+
+            is FinanceUiEvent.ChangeRecurringTemplateActive -> {
+                localState.update {
+                    it.copy(
+                        recurringTemplateForm = it.recurringTemplateForm.copy(isActive = event.value)
+                    )
+                }
+            }
+
             FinanceUiEvent.SaveEntry -> saveEntry()
+            FinanceUiEvent.SaveRecurringTemplate -> saveRecurringTemplate()
+            FinanceUiEvent.ApplySuggestedRecurringTemplateAmounts -> applySuggestedRecurringTemplateAmounts()
             is FinanceUiEvent.DeleteEntry -> deleteEntry(event.entryId)
             is FinanceUiEvent.UpdateEntryStatus -> updateEntryStatus(event.entryId, event.status)
+            is FinanceUiEvent.DeleteRecurringTemplate -> deleteRecurringTemplate(event.templateId)
+            is FinanceUiEvent.UpdateRecurringTemplateActive -> {
+                updateRecurringTemplateActive(event.templateId, event.isActive)
+            }
+            is FinanceUiEvent.GenerateEntriesForMonth -> generateEntriesForMonth(event.month)
             is FinanceUiEvent.ShowFeedback -> {
                 localState.update { it.copy(feedbackMessage = event.message) }
             }
@@ -326,6 +446,141 @@ class FinanceViewModel(
                         "Pendência marcada como paga"
                     } else {
                         "Item marcado como pendente"
+                    }
+                )
+            }
+        }
+    }
+
+    private fun saveRecurringTemplate() {
+        val local = localState.value
+        val form = local.recurringTemplateForm
+        val amountCents = parseCurrencyToCents(form.amountInput)
+
+        if (form.description.isBlank()) {
+            localState.update { it.copy(feedbackMessage = "Descrição da base é obrigatória") }
+            return
+        }
+
+        if (form.amountInput.isNotBlank() && amountCents == null) {
+            localState.update { it.copy(feedbackMessage = "Valor da base inválido. Exemplo: 700,00") }
+            return
+        }
+
+        val allowedCategories = FinanceCategories.optionsForType(form.type)
+        val category = form.category.takeIf { it in allowedCategories } ?: FinanceCategories.OUTROS
+        val counterparty = form.counterparty.trim().takeIf { it.isNotBlank() }
+
+        viewModelScope.launch {
+            val editingTemplateId = local.editingRecurringTemplateId
+
+            if (editingTemplateId == null) {
+                repository.addRecurringTemplate(
+                    NewRecurringEntryTemplate(
+                        description = form.description.trim(),
+                        category = category,
+                        amountCents = amountCents,
+                        type = form.type,
+                        status = form.status,
+                        counterparty = counterparty,
+                        isActive = form.isActive,
+                        displayOrder = latestRecurringTemplates.size
+                    )
+                )
+
+                localState.update {
+                    it.copy(
+                        showRecurringTemplateDialog = false,
+                        editingRecurringTemplateId = null,
+                        recurringTemplateForm = RecurringTemplateFormState(),
+                        feedbackMessage = "Item da base salvo"
+                    )
+                }
+                return@launch
+            }
+
+            val existing = latestRecurringTemplates.firstOrNull { it.id == editingTemplateId }
+            if (existing == null) {
+                localState.update { it.copy(feedbackMessage = "Não foi possível atualizar a base" ) }
+                return@launch
+            }
+
+            repository.updateRecurringTemplate(
+                existing.copy(
+                    description = form.description.trim(),
+                    category = category,
+                    amountCents = amountCents,
+                    type = form.type,
+                    status = form.status,
+                    counterparty = counterparty,
+                    isActive = form.isActive
+                )
+            )
+
+            localState.update {
+                it.copy(
+                    showRecurringTemplateDialog = false,
+                    editingRecurringTemplateId = null,
+                    recurringTemplateForm = RecurringTemplateFormState(),
+                    feedbackMessage = "Item da base atualizado"
+                )
+            }
+        }
+    }
+
+    private fun deleteRecurringTemplate(templateId: Long) {
+        viewModelScope.launch {
+            repository.deleteRecurringTemplate(templateId)
+            localState.update { it.copy(feedbackMessage = "Item removido da base") }
+        }
+    }
+
+    private fun updateRecurringTemplateActive(templateId: Long, isActive: Boolean) {
+        viewModelScope.launch {
+            val existing = latestRecurringTemplates.firstOrNull { it.id == templateId } ?: run {
+                localState.update { it.copy(feedbackMessage = "Não foi possível atualizar a base") }
+                return@launch
+            }
+
+            repository.updateRecurringTemplate(existing.copy(isActive = isActive))
+            localState.update {
+                it.copy(
+                    feedbackMessage = if (isActive) {
+                        "Item reativado na base"
+                    } else {
+                        "Item pausado na base"
+                    }
+                )
+            }
+        }
+    }
+
+    private fun generateEntriesForMonth(month: YearMonth) {
+        viewModelScope.launch {
+            val generated = repository.generateEntriesFromRecurringTemplates(month)
+            localState.update {
+                it.copy(
+                    selectedEntriesMonth = month,
+                    selectedReportMonth = month,
+                    feedbackMessage = if (generated > 0) {
+                        "$generated item(ns) da base gerado(s) para ${month}"
+                    } else {
+                        "Nenhum item novo da base para gerar neste mês"
+                    }
+                )
+            }
+        }
+    }
+
+    private fun applySuggestedRecurringTemplateAmounts() {
+        viewModelScope.launch {
+            val updated = repository.applySuggestedRecurringTemplateAmounts()
+            localState.update {
+                it.copy(
+                    feedbackMessage = if (updated > 0) {
+                        "$updated item(ns) da base receberam valores iniciais"
+                    } else {
+                        "Nenhum item da base precisava de valor inicial"
                     }
                 )
             }

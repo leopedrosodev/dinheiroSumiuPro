@@ -14,7 +14,9 @@ class AppContainer(context: Context) {
         appContext,
         FinanceDatabase::class.java,
         "dinheiro_sumiu_pro.db"
-    ).build()
+    )
+        .addMigrations(FinanceDatabase.MIGRATION_1_2)
+        .build()
 
     val financeRepository = FinanceRepository(database.ledgerDao())
     val calculateMonthBalanceUseCase = CalculateMonthBalanceUseCase()
